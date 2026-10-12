@@ -1,0 +1,121 @@
+{
+  "name": "@spraay/dex-adapters",
+  "version": "0.1.0",
+  "description": "Push-model batch distribution for DEXes, powered by Spraay Protocol. Adapters for PancakeSwap Infinity, SushiSwap and direct Spraay calls.",
+  "author": "plagtech (https://github.com/plagtech)",
+  "license": "MIT",
+  "type": "module",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/plagtech/spraay-dex-adapters.git"
+  },
+  "homepage": "https://github.com/plagtech/spraay-dex-adapters#readme",
+  "keywords": [
+    "spraay",
+    "batch",
+    "airdrop",
+    "distribution",
+    "pancakeswap",
+    "infinity",
+    "hooks",
+    "sushiswap",
+    "balancer",
+    "viem"
+  ],
+  "sideEffects": false,
+  "main": "./dist/index.cjs",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "import": {
+        "types": "./dist/index.d.ts",
+        "default": "./dist/index.js"
+      },
+      "require": {
+        "types": "./dist/index.d.cts",
+        "default": "./dist/index.cjs"
+      }
+    },
+    "./core": {
+      "import": {
+        "types": "./dist/core/index.d.ts",
+        "default": "./dist/core/index.js"
+      },
+      "require": {
+        "types": "./dist/core/index.d.cts",
+        "default": "./dist/core/index.cjs"
+      }
+    },
+    "./generic": {
+      "import": {
+        "types": "./dist/generic/index.d.ts",
+        "default": "./dist/generic/index.js"
+      },
+      "require": {
+        "types": "./dist/generic/index.d.cts",
+        "default": "./dist/generic/index.cjs"
+      }
+    },
+    "./pancakeswap": {
+      "import": {
+        "types": "./dist/pancakeswap/index.d.ts",
+        "default": "./dist/pancakeswap/index.js"
+      },
+      "require": {
+        "types": "./dist/pancakeswap/index.d.cts",
+        "default": "./dist/pancakeswap/index.cjs"
+      }
+    },
+    "./sushiswap": {
+      "import": {
+        "types": "./dist/sushiswap/index.d.ts",
+        "default": "./dist/sushiswap/index.js"
+      },
+      "require": {
+        "types": "./dist/sushiswap/index.d.cts",
+        "default": "./dist/sushiswap/index.cjs"
+      }
+    },
+    "./balancer": {
+      "import": {
+        "types": "./dist/balancer/index.d.ts",
+        "default": "./dist/balancer/index.js"
+      },
+      "require": {
+        "types": "./dist/balancer/index.d.cts",
+        "default": "./dist/balancer/index.cjs"
+      }
+    },
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "dist",
+    "contracts",
+    "README.md"
+  ],
+  "scripts": {
+    "build": "tsup",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:fork": "vitest run test/fork",
+    "prepublishOnly": "npm run typecheck && npm test && npm run build"
+  },
+  "peerDependencies": {
+    "viem": "^2.0.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.19.43",
+    "tsup": "^8.3.5",
+    "typescript": "^5.6.3",
+    "viem": "^2.21.54",
+    "vitest": "^2.1.8"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "publishConfig": {
+    "access": "public"
+  }
+}
