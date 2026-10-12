@@ -18,7 +18,14 @@ import {
 import { bsc } from 'viem/chains'
 import { spraayAbi } from '../../src/core/abi'
 import { SPRAAY_ADDRESSES } from '../../src/core/addresses'
-import { batchDistributeHookAbi } from '../../src/pancakeswap/abi'
+import { batchDistributeHookAbi as balancerHookAbi } from '../../src/balancer/abi'
+import { batchDistributeHookAbi as pancakeswapHookAbi } from '../../src/pancakeswap/abi'
+
+// Merge both ABIs so the mock chain handles PancakeSwap and Balancer hook calls.
+// Distinct selectors (isRegisteredPool(bytes32) vs isRegisteredPool(address)) route correctly;
+// identical selectors (isOperator, quoteTotalCost, etc.) share the same return type so the
+// first match encodes the same result.
+const mergedHookAbi: Abi = [...pancakeswapHookAbi, ...balancerHookAbi] as unknown as Abi
 
 export const SENDER: Address = '0x1111111111111111111111111111111111111111'
 export const TOKEN: Address = '0x2222222222222222222222222222222222222222'
@@ -70,7 +77,7 @@ export function createMockChain(options: Options = {}) {
   function abiFor(to: string): Abi {
     const addr = to.toLowerCase()
     if (addr === spraay.toLowerCase()) return spraayAbi
-    if (addr === HOOK.toLowerCase() || addr === DEPLOYED_HOOK.toLowerCase()) return batchDistributeHookAbi
+    if (addr === HOOK.toLowerCase() || addr === DEPLOYED_HOOK.toLowerCase()) return mergedHookAbi
     return erc20Abi
   }
 

@@ -1,39 +1,33 @@
-// Balancer adapter: coming soon. The interface matches the other adapters so code written
-// against it compiles today; every call throws until the integration ships. See ./README.md.
+// Balancer v3 adapter: distributions go through BatchDistributeHook, which attributes
+// each batch to a Balancer v3 pool and forwards it to Spraay.
 
-import { SpraayError } from '../core/errors'
-import type {
-  CostEstimate,
-  DistributeEqualParams,
-  DistributeNativeParams,
-  DistributeParams,
-  DistributeResult,
-  EstimateCostParams,
-} from '../core/types'
+import { deployBatchDistributeHook } from './deploy'
 
-export const BALANCER_ADAPTER_STATUS = 'coming-soon' as const
+export { distribute, distributeEqual, distributeNative, estimateCost, type HookTarget } from './distribute'
+export { deployBatchDistributeHook, type DeployHookParams, type DeployHookResult } from './deploy'
+export {
+  acceptOwnership,
+  getHookInfo,
+  isOperator,
+  isRegisteredPool,
+  quoteHookTotalCost,
+  rescueTokens,
+  setOperator,
+  setSpraayContract,
+  transferOwnership,
+  type AdminResult,
+  type HookInfo,
+} from './admin'
+export {
+  BALANCER_V3,
+  getBalancerAddresses,
+  type BalancerSupportedChainId,
+  type BalancerV3Addresses,
+} from './constants'
+export { batchDistributeHookAbi } from './abi'
+export { batchDistributeHookBytecode } from './bytecode'
 
-function notImplemented(fn: string): never {
-  throw new SpraayError(
-    'NOT_IMPLEMENTED',
-    `@spraay/dex-adapters/balancer: ${fn}() is not yet implemented. Use @spraay/dex-adapters/generic in the meantime.`,
-  )
-}
+export const deployHook = deployBatchDistributeHook
 
-export async function distribute(_params: DistributeParams): Promise<DistributeResult> {
-  return notImplemented('distribute')
-}
-
-export async function distributeEqual(_params: DistributeEqualParams): Promise<DistributeResult> {
-  return notImplemented('distributeEqual')
-}
-
-export async function distributeNative(_params: DistributeNativeParams): Promise<DistributeResult> {
-  return notImplemented('distributeNative')
-}
-
-export async function estimateCost(_params: EstimateCostParams): Promise<CostEstimate> {
-  return notImplemented('estimateCost')
-}
-
+export { NATIVE_TOKEN } from '../core/addresses'
 export type * from '../core/types'
