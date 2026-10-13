@@ -11,7 +11,7 @@ npm install @spraay/dex-adapters viem
 | Generic | `@spraay/dex-adapters/generic` | ✅ Direct Spraay calls on any supported chain |
 | PancakeSwap Infinity | `@spraay/dex-adapters/pancakeswap` | ✅ `BatchDistributeHook` (deploy, admin, distribute) |
 | SushiSwap | `@spraay/dex-adapters/sushiswap` | ✅ Launchpad holder rewards on Base ([sushi-labs/sushiswap#2324](https://github.com/sushi-labs/sushiswap/pull/2324), open) |
-| Balancer | `@spraay/dex-adapters/balancer` | 🚧 Coming soon (the interface is exported; calls throw `NOT_IMPLEMENTED`) |
+| Balancer v3 | `@spraay/dex-adapters/balancer` | ✅ `BatchDistributeHook` (deploy, admin, distribute) on Base |
 
 ## Push vs pull distribution
 
@@ -125,7 +125,7 @@ The adapter also re-exports the PR's helpers and constants unchanged: `getSpraay
 
 ## Shared interface
 
-Every adapter exports these four functions with the same parameters. The PancakeSwap adapter also takes `hook` and `poolId`.
+Every adapter exports these four functions with the same parameters. The PancakeSwap adapter also takes `hook` and `poolId`; the Balancer adapter takes `hook` and `pool` (the Balancer v3 pool address).
 
 ```ts
 distribute({ token, recipients, amounts, chain, walletClient })        // ERC-20, per-recipient amounts
@@ -194,16 +194,49 @@ Contract reverts from viem pass through with their decoded errors.
 | BNB Chain | `0xa0FfB9c1CE1Fe56963B0321B32E7A0302114058b` | `0x238a358808379702088667322f80aC48bAd5e6c4` |
 | Base | `0xa0FfB9c1CE1Fe56963B0321B32E7A0302114058b` | `0x238a358808379702088667322f80aC48bAd5e6c4` |
 
+**Balancer v3 (used by the Balancer hook)**
+
+| Chain | Vault |
+| --- | --- |
+| Base | `0xbA1333333333a1BA1108E8412f11850A5C319bA9` |
+
 | Adapter | Chains |
 | --- | --- |
 | generic | BNB Chain, Base |
 | pancakeswap | BNB Chain, Base |
 | sushiswap | Base |
-| balancer | coming soon |
+| balancer | Base |
 
-## Balancer
+### Balancer v3: distribute through `BatchDistributeHook`
 
-Balancer support is coming. `@spraay/dex-adapters/balancer` already exports the shared interface so code can be written against it now, but every call throws `NOT_IMPLEMENTED`. See [`src/balancer/README.md`](src/balancer/README.md) for the planned Balancer v3 hook design.
+The Balancer hook is similar to PancakeSwap's, but pools are identified by their contract address instead of a `bytes32` pool id, and the Balancer v3 vault is deterministic (`0xbA1333…`) across all chains.
+
+```ts
+import { base } from 'viem/chains'
+import { deployHook, distribute, setOperator, BALANCER_V3 } from '@spraay/dex-adapters/balancer'
+
+// 1. Deploy once per chain. Defaults: owner = deployer, vault = Balancer v3 Vault.
+const { address: hook } = await deployHook({ chain: base, walletClient, publicClient, operator: account })
+
+// 2. Create a Balancer v3 pool that specifies this hook at registration.
+//    The hook's onRegister callback tracks the pool automatically.
+
+// 3. Distribute. The operator funds the batch, and the hook forwards it to Spraay.
+await distribute({
+  hook: hook!,
+  pool: '0x…',   // Balancer v3 pool address (registered with the hook)
+  token: USDC,
+  recipients,
+  amounts,
+  chain: base,
+  walletClient,
+  publicClient,
+})
+```
+
+Balancer-specific functions: `deployHook` / `deployBatchDistributeHook`, `setOperator`, `getHookInfo`, `isOperator`, `isRegisteredPool`, `quoteHookTotalCost`, `getBalancerAddresses`, `BALANCER_V3`.
+
+See [`src/balancer/README.md`](src/balancer/README.md) for architecture details and differences from the PancakeSwap adapter.
 
 ## Package layout
 
@@ -212,7 +245,7 @@ src/core/         ABI, addresses, fee math, Recipient[] building, validation, sh
 src/generic/      direct Spraay calls
 src/pancakeswap/  BatchDistributeHook adapter (ABI + bytecode, deploy, admin, distribute, PoolId helpers)
 src/sushiswap/    launchpad adapter (sushi-labs/sushiswap#2324)
-src/balancer/     scaffold
+src/balancer/     BatchDistributeHook adapter (ABI + bytecode, deploy, admin, distribute, Balancer v3 constants)
 contracts/        Solidity reference sources (ISpraay, BatchDistributeHook)
 ```
 

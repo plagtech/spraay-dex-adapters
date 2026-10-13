@@ -1,7 +1,7 @@
 {
   "name": "@spraay/dex-adapters",
   "version": "0.1.0",
-  "description": "Push-model batch distribution for DEXes, powered by Spraay Protocol. Adapters for PancakeSwap Infinity, SushiSwap and direct Spraay calls.",
+  "description": "Push-model batch distribution for DEXes, powered by Spraay Protocol. Adapters for PancakeSwap Infinity, SushiSwap, Balancer v3 and direct Spraay calls.",
   "author": "plagtech (https://github.com/plagtech)",
   "license": "MIT",
   "type": "module",
