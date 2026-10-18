@@ -9,6 +9,7 @@ npm install @spraay/dex-adapters viem
 | Adapter | Import | Status |
 | --- | --- | --- |
 | Generic | `@spraay/dex-adapters/generic` | ✅ Direct Spraay calls on any supported chain |
+| Uniswap V4 | `@spraay/dex-adapters/uniswap-v4` | ✅ `BatchDistributeHook` (CREATE2-mined deploy, admin, distribute) on Base, BNB Chain |
 | PancakeSwap Infinity | `@spraay/dex-adapters/pancakeswap` | ✅ `BatchDistributeHook` (deploy, admin, distribute) |
 | SushiSwap | `@spraay/dex-adapters/sushiswap` | ✅ Launchpad holder rewards on Base ([sushi-labs/sushiswap#2324](https://github.com/sushi-labs/sushiswap/pull/2324), open) |
 | Balancer v3 | `@spraay/dex-adapters/balancer` | ✅ `BatchDistributeHook` (deploy, admin, distribute) on Base |
@@ -104,6 +105,41 @@ PancakeSwap-specific functions:
 
 The hook is non-custodial. Each call pulls exactly `amount + fee` from the operator, approves Spraay for that amount, and calls it, so nothing stays in the hook. Before approving anything, the SDK checks that the sender is an operator and that the pool is registered.
 
+### Uniswap V4: distribute through `BatchDistributeHook`
+
+Same hook model as PancakeSwap: every batch is tied to a V4 pool that was initialized with the hook, and `afterDonate` lets indexers line up push-side payouts with the pool's `donate()` incentives. The difference is deployment. V4 reads hook permissions from the low 14 bits of the hook **address**, so `deployHook` mines a CREATE2 salt for the `afterInitialize | afterDonate` flags (`0x…1010`, about a second of hashing) and deploys through the deterministic CREATE2 deployer. The miner is a port of v4-periphery's `HookMiner` and produces the same salt as the Foundry deploy script.
+
+```ts
+import { zeroAddress } from 'viem'
+import { base } from 'viem/chains'
+import { deployHook, distribute, getPoolId, UniswapV4Adapter } from '@spraay/dex-adapters/uniswap-v4'
+
+// 1. Deploy once per chain. Defaults: owner = deployer, poolManager = Uniswap V4 PoolManager.
+const { address: hook } = await deployHook({ chain: base, walletClient, publicClient, operator: account })
+
+// 2. Create the pool with the hook (PoolManager.initialize / PositionManager), then derive its id.
+const poolId = getPoolId({ currency0: zeroAddress, currency1: TOKEN, fee: 3000, tickSpacing: 60, hooks: hook })
+
+// 3. Distribute. The operator funds the batch, and the hook forwards it to Spraay in the same tx.
+await distribute({ hook, poolId, token: TOKEN, recipients, amounts, chain: base, walletClient, publicClient })
+
+// Or the object-style wrapper bound to one hook + pool:
+const v4 = new UniswapV4Adapter({ hook, poolId, walletClient, publicClient })
+await v4.batchDistribute({ token: TOKEN, recipients: [{ address: '0xAbc…', amount: 1_000n }] })
+await v4.batchDistributeEqual({ token: TOKEN, recipients: ['0xAbc…', '0xDef…'], amountPerRecipient: 500n })
+```
+
+Uniswap V4-specific functions:
+
+- `deployHook` / `deployBatchDistributeHook` (mines automatically; pass `salt` to reuse one), `mineHookAddress`
+- `UniswapV4Adapter` (`deploy`, `batchDistribute`, `batchDistributeEqual`, `estimateCost`, `setOperator`, reads)
+- `setOperator`, `setSpraayContract`, `rescueTokens`, `transferOwnership`, `acceptOwnership`
+- `isOperator`, `isRegisteredPool`, `quoteHookTotalCost`, `getHookInfo`
+- `getPoolId`, `BATCH_DISTRIBUTE_HOOK_FLAGS`, `CREATE2_DEPLOYER`, `UNISWAP_V4`
+- `batchDistributeHookAbi`, `batchDistributeHookBytecode`
+
+Hook source, Foundry tests and deploy script: [plagtech/spraay-uniswap-v4-hook](https://github.com/plagtech/spraay-uniswap-v4-hook).
+
 ### SushiSwap: launchpad holder rewards on Base
 
 This adapter is based on [sushi-labs/sushiswap#2324](https://github.com/sushi-labs/sushiswap/pull/2324). The launchpad sends holder rewards straight to Spraay on Base, and no Sushi contract is involved. The adapter only accepts Base and rejects other chains with `UNSUPPORTED_CHAIN`.
@@ -125,7 +161,7 @@ The adapter also re-exports the PR's helpers and constants unchanged: `getSpraay
 
 ## Shared interface
 
-Every adapter exports these four functions with the same parameters. The PancakeSwap adapter also takes `hook` and `poolId`; the Balancer adapter takes `hook` and `pool` (the Balancer v3 pool address).
+Every adapter exports these four functions with the same parameters. The PancakeSwap and Uniswap V4 adapters also take `hook` and `poolId`; the Balancer adapter takes `hook` and `pool` (the Balancer v3 pool address).
 
 ```ts
 distribute({ token, recipients, amounts, chain, walletClient })        // ERC-20, per-recipient amounts
@@ -174,7 +210,7 @@ quoteDistribution([200n, 200n, 200n])  // fee is charged once on the batch total
 
 Errors thrown by the SDK are `SpraayError` instances with a `code`:
 
-`NO_RECIPIENTS`, `TOO_MANY_RECIPIENTS`, `LENGTH_MISMATCH`, `INVALID_ADDRESS`, `INVALID_AMOUNT`, `INVALID_TOKEN`, `UNSUPPORTED_CHAIN`, `CHAIN_MISMATCH`, `MISSING_ACCOUNT`, `INSUFFICIENT_ALLOWANCE`, `TRANSACTION_REVERTED`, `NOT_OPERATOR`, `POOL_NOT_REGISTERED`, `NOT_IMPLEMENTED`
+`NO_RECIPIENTS`, `TOO_MANY_RECIPIENTS`, `LENGTH_MISMATCH`, `INVALID_ADDRESS`, `INVALID_AMOUNT`, `INVALID_TOKEN`, `UNSUPPORTED_CHAIN`, `CHAIN_MISMATCH`, `MISSING_ACCOUNT`, `INSUFFICIENT_ALLOWANCE`, `TRANSACTION_REVERTED`, `NOT_OPERATOR`, `POOL_NOT_REGISTERED`, `NOT_IMPLEMENTED`, `HOOK_ADDRESS_NOT_FOUND`
 
 Contract reverts from viem pass through with their decoded errors.
 
@@ -186,6 +222,13 @@ Contract reverts from viem pass through with their decoded errors.
 | --- | --- | --- |
 | BNB Chain | 56 | `0x3093a2951FB77b3beDfB8BA20De645F7413432C1` |
 | Base | 8453 | `0x1646452F98E36A3c9Cfc3eDD8868221E207B5eEC` |
+
+**Uniswap V4 (used by the V4 hook)**
+
+| Chain | PoolManager |
+| --- | --- |
+| BNB Chain | `0x28e2Ea090877bF75740558f6BFB36A5ffeE9e9dF` |
+| Base | `0x498581fF718922c3f8e6A244956aF099B2652b2b` |
 
 **PancakeSwap Infinity (used by the hook)**
 
@@ -203,6 +246,7 @@ Contract reverts from viem pass through with their decoded errors.
 | Adapter | Chains |
 | --- | --- |
 | generic | BNB Chain, Base |
+| uniswap-v4 | BNB Chain, Base |
 | pancakeswap | BNB Chain, Base |
 | sushiswap | Base |
 | balancer | Base |
@@ -243,6 +287,7 @@ See [`src/balancer/README.md`](src/balancer/README.md) for architecture details 
 ```
 src/core/         ABI, addresses, fee math, Recipient[] building, validation, shared types
 src/generic/      direct Spraay calls
+src/uniswap-v4/   BatchDistributeHook adapter (ABI + bytecode, CREATE2 address mining + deploy, admin, distribute, PoolId, UniswapV4Adapter)
 src/pancakeswap/  BatchDistributeHook adapter (ABI + bytecode, deploy, admin, distribute, PoolId helpers)
 src/sushiswap/    launchpad adapter (sushi-labs/sushiswap#2324)
 src/balancer/     BatchDistributeHook adapter (ABI + bytecode, deploy, admin, distribute, Balancer v3 constants)

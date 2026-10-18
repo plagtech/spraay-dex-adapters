@@ -9,6 +9,7 @@ import { describe, expect, it } from 'vitest'
 import { MAX_RECIPIENTS, SPRAAY_ADDRESSES, spraayAbi } from '../../src/core'
 import { estimateCost } from '../../src/generic'
 import { PANCAKESWAP_INFINITY, getHookInfo } from '../../src/pancakeswap'
+import { UNISWAP_V4 } from '../../src/uniswap-v4'
 
 const targets: { chain: Chain; rpc?: string; hook?: string }[] = [
   { chain: bsc, rpc: process.env.BSC_RPC_URL, hook: process.env.BSC_HOOK_ADDRESS },
@@ -56,6 +57,11 @@ for (const { chain, rpc, hook } of targets) {
 
     it('PancakeSwap Infinity CLPoolManager is deployed', async () => {
       const code = await getCode(publicClient, { address: PANCAKESWAP_INFINITY[chain.id as 56 | 8453].clPoolManager })
+      expect(code && code.length > 2).toBe(true)
+    })
+
+    it('Uniswap V4 PoolManager is deployed', async () => {
+      const code = await getCode(publicClient, { address: UNISWAP_V4[chain.id as 56 | 8453].poolManager })
       expect(code && code.length > 2).toBe(true)
     })
 

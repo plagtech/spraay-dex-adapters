@@ -1,7 +1,7 @@
 {
   "name": "@spraay/dex-adapters",
-  "version": "0.2.0",
-  "description": "Push-model batch distribution for DEXes, powered by Spraay Protocol. Adapters for PancakeSwap Infinity, SushiSwap, Balancer v3 and direct Spraay calls.",
+  "version": "0.3.0",
+  "description": "Push-model batch distribution for DEXes, powered by Spraay Protocol. Adapters for Uniswap V4, PancakeSwap Infinity, SushiSwap, Balancer v3 and direct Spraay calls.",
   "author": "plagtech (https://github.com/plagtech)",
   "license": "MIT",
   "type": "module",
@@ -15,6 +15,8 @@
     "batch",
     "airdrop",
     "distribution",
+    "uniswap",
+    "uniswap-v4",
     "pancakeswap",
     "infinity",
     "hooks",
@@ -85,6 +87,16 @@
       "require": {
         "types": "./dist/balancer/index.d.cts",
         "default": "./dist/balancer/index.cjs"
+      }
+    },
+    "./uniswap-v4": {
+      "import": {
+        "types": "./dist/uniswap-v4/index.d.ts",
+        "default": "./dist/uniswap-v4/index.js"
+      },
+      "require": {
+        "types": "./dist/uniswap-v4/index.d.cts",
+        "default": "./dist/uniswap-v4/index.cjs"
       }
     },
     "./package.json": "./package.json"

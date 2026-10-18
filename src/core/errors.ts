@@ -13,6 +13,7 @@ export type SpraayErrorCode =
   | 'NOT_OPERATOR'
   | 'POOL_NOT_REGISTERED'
   | 'NOT_IMPLEMENTED'
+  | 'HOOK_ADDRESS_NOT_FOUND'
 
 /** Every error thrown by the SDK itself (not by viem or the RPC) is a `SpraayError`. */
 export class SpraayError extends Error {
