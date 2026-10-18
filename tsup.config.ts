@@ -8,6 +8,7 @@ export default defineConfig({
     'pancakeswap/index': 'src/pancakeswap/index.ts',
     'sushiswap/index': 'src/sushiswap/index.ts',
     'balancer/index': 'src/balancer/index.ts',
+    'uniswap-v4/index': 'src/uniswap-v4/index.ts',
   },
   format: ['esm', 'cjs'],
   dts: true,

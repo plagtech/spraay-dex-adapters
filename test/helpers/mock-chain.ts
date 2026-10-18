@@ -11,6 +11,8 @@ import {
   encodeFunctionResult,
   erc20Abi,
   getAddress,
+  getContractAddress,
+  slice,
   keccak256,
   numberToHex,
   toHex,
@@ -20,6 +22,7 @@ import { spraayAbi } from '../../src/core/abi'
 import { SPRAAY_ADDRESSES } from '../../src/core/addresses'
 import { batchDistributeHookAbi as balancerHookAbi } from '../../src/balancer/abi'
 import { batchDistributeHookAbi as pancakeswapHookAbi } from '../../src/pancakeswap/abi'
+import { CREATE2_DEPLOYER } from '../../src/uniswap-v4/constants'
 
 // Merge both ABIs so the mock chain handles PancakeSwap and Balancer hook calls.
 // Distinct selectors (isRegisteredPool(bytes32) vs isRegisteredPool(address)) route correctly;
@@ -52,6 +55,8 @@ interface Options {
   operators?: Address[]
   registeredPools?: Hex[]
   revertSends?: boolean
+  /** Addresses that already have code (eth_getCode returns non-empty) */
+  deployedCode?: Address[]
 }
 
 /** In-memory JSON-RPC provider that understands the Spraay, BatchDistributeHook and ERC-20 ABIs */
@@ -65,6 +70,7 @@ export function createMockChain(options: Options = {}) {
     pools: new Set((options.registeredPools ?? []).map((p) => p.toLowerCase())),
     sent: [] as SentTx[],
     calls: [] as { to: Address; functionName: string }[],
+    code: new Set((options.deployedCode ?? []).map((a) => a.toLowerCase())),
     receipts: new Map<Hash, { status: 'success' | 'reverted'; contractAddress?: Address; to?: Address }>(),
   }
   if (options.allowance !== undefined) {
@@ -119,6 +125,14 @@ export function createMockChain(options: Options = {}) {
   function send(tx: { from: Address; to?: Address; data: Hex; value?: Hex }): Hash {
     const hash = keccak256(toHex(`tx-${state.sent.length}`))
     const value = tx.value ? BigInt(tx.value) : 0n
+    if (tx.to?.toLowerCase() === CREATE2_DEPLOYER.toLowerCase()) {
+      // Uniswap V4 hooks: raw `salt ++ initCode` to the deterministic CREATE2 deployer
+      state.sent.push({ from: tx.from, to: tx.to, value, data: tx.data })
+      const deployed = getContractAddress({ opcode: 'CREATE2', from: CREATE2_DEPLOYER, salt: slice(tx.data, 0, 32), bytecodeHash: keccak256(slice(tx.data, 32)) })
+      if (!options.revertSends) state.code.add(deployed.toLowerCase())
+      state.receipts.set(hash, { status: options.revertSends ? 'reverted' : 'success', to: tx.to })
+      return hash
+    }
     if (!tx.to) {
       state.sent.push({ from: tx.from, value, data: tx.data })
       state.receipts.set(hash, { status: 'success', contractAddress: DEPLOYED_HOOK })
@@ -148,6 +162,8 @@ export function createMockChain(options: Options = {}) {
           return '0x10'
         case 'eth_call':
           return call(params[0].to, params[0].data ?? params[0].input, params[0].from)
+        case 'eth_getCode':
+          return state.code.has(params[0].toLowerCase()) ? '0x6080' : '0x'
         case 'eth_estimateGas':
           return numberToHex(150_000)
         case 'eth_gasPrice':
