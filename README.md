@@ -140,6 +140,12 @@ Uniswap V4-specific functions:
 
 Hook source, Foundry tests and deploy script: [plagtech/spraay-uniswap-v4-hook](https://github.com/plagtech/spraay-uniswap-v4-hook).
 
+**Canonical deployment.** You can pass the deployed hook on Base straight to `distribute` / `UniswapV4Adapter` as `hook`; you don't need to deploy your own:
+
+| Chain | BatchDistributeHook |
+| --- | --- |
+| Base | [`0xB9c1aB7BD023C784c19B8e9F10CE9CDEd9fF9010`](https://basescan.org/address/0xB9c1aB7BD023C784c19B8e9F10CE9CDEd9fF9010#code) (verified on Basescan) |
+
 ### SushiSwap: launchpad holder rewards on Base
 
 This adapter is based on [sushi-labs/sushiswap#2324](https://github.com/sushi-labs/sushiswap/pull/2324). The launchpad sends holder rewards straight to Spraay on Base, and no Sushi contract is involved. The adapter only accepts Base and rejects other chains with `UNSUPPORTED_CHAIN`.
@@ -225,10 +231,10 @@ Contract reverts from viem pass through with their decoded errors.
 
 **Uniswap V4 (used by the V4 hook)**
 
-| Chain | PoolManager |
-| --- | --- |
-| BNB Chain | `0x28e2Ea090877bF75740558f6BFB36A5ffeE9e9dF` |
-| Base | `0x498581fF718922c3f8e6A244956aF099B2652b2b` |
+| Chain | PoolManager | BatchDistributeHook (canonical) |
+| --- | --- | --- |
+| BNB Chain | `0x28e2Ea090877bF75740558f6BFB36A5ffeE9e9dF` | not deployed yet |
+| Base | `0x498581fF718922c3f8e6A244956aF099B2652b2b` | `0xB9c1aB7BD023C784c19B8e9F10CE9CDEd9fF9010` |
 
 **PancakeSwap Infinity (used by the hook)**
 
